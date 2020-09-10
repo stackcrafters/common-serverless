@@ -3,9 +3,10 @@ import validateRequest from '../requestValidation/requestValidation';
 export default (requestSchemas, lambdaFunc) => async (event, context) => {
   if (event.source === 'serverless-plugin-warmup') {
     console.log('serverless-plugin-warmup');
+    context?.serverlessSdk?.tagEvent('serverless-plugin-warmup', 'serverless-plugin-warmup');
     return 'serverless-plugin-warmup';
   }
-  console.log('Principal: ', (event.requestContext.authorizer || {}).principalId);
+  context?.serverlessSdk?.tagEvent('principal', (event.requestContext.authorizer || {}).principalId);
   try {
     console.debug(`Using request schema: ${process.env.REQUEST_SCHEMA} - ${event.httpMethod} ${event.resource}`);
     const requestSchema = requestSchemas[process.env.REQUEST_SCHEMA];
@@ -22,6 +23,7 @@ export default (requestSchemas, lambdaFunc) => async (event, context) => {
     console.debug(`[${response.statusCode}] Controller execution for path: ${event.resource}`);
     return response;
   } catch (e) {
+    context?.serverlessSdk?.captureError(e);
     console.error(`[500] Controller failed to execute with a exception for path ${event.resource}`, e);
     return response({ message: '[500] Internal Server Error' }, code.INTERNAL_SERVER_ERROR);
   }
