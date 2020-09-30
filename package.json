@@ -1,7 +1,7 @@
 {
   "name": "@stackcrafters/common-serverless",
   "description": "A package that provides serverless setup with babel",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "main": "src/index.js",
   "files": [
     "/src",
