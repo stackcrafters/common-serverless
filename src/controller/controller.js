@@ -1,30 +1,39 @@
 import validateRequest from '../requestValidation/requestValidation';
 
-export default (requestSchemas, lambdaFunc) => async (event, context) => {
+const { debug, warn, error } = console;
+
+export default (requestSchema, lambdaFunc) => async (event, context) => {
   if (event.source === 'serverless-plugin-warmup') {
-    console.log('serverless-plugin-warmup');
+    debug('serverless-plugin-warmup');
     context?.serverlessSdk?.tagEvent('serverless-plugin-warmup', 'serverless-plugin-warmup');
     return 'serverless-plugin-warmup';
   }
-  context?.serverlessSdk?.tagEvent('principal', (event.requestContext.authorizer || {}).principalId);
+  const path = `${event.httpMethod} ${event.resource}`;
+  const principal = event.requestContext?.authorizer?.principalId;
+  context?.serverlessSdk?.tagEvent('principal', principal);
   try {
-    console.debug(`Using request schema: ${process.env.REQUEST_SCHEMA} - ${event.httpMethod} ${event.resource}`);
-    const requestSchema = requestSchemas[process.env.REQUEST_SCHEMA];
+    debug(`Using request schema: ${process.env.REQUEST_SCHEMA} - ${path}`);
+    const body = event.body && JSON.parse(event.body);
     if (process.env.REQUEST_SCHEMA && !requestSchema) {
-      throw new Error(`The request schema was not found : ${process.env.REQUEST_SCHEMA}`);
+      error(`[500] The request schema was not found for path: ${path}, schema: ${process.env.REQUEST_SCHEMA}`);
+      return response({ message: '[500] Internal Server Error' }, code.INTERNAL_SERVER_ERROR);
     }
     if (requestSchema) {
-      const { valid, validationResponse } = validateRequest(requestSchema, event);
+      const { valid, validationResponse } = validateRequest(requestSchema, body);
       if (!valid) {
+        warn(
+          `[${validationResponse.statusCode}] Validation failed for execution for path: ${path}, principal: ${principal}`,
+          validationResponse
+        );
         return validationResponse;
       }
     }
-    const response = await lambdaFunc(event, context);
-    console.debug(`[${response.statusCode}] Controller execution for path: ${event.resource}`);
+    const response = await lambdaFunc({ event, body, context, principal, jwtClaims: event.requestContext?.authorizer?.claims });
+    debug(`[${response.statusCode}] Controller execution for path: ${path}, principal: ${principal}`);
     return response;
   } catch (e) {
     context?.serverlessSdk?.captureError(e);
-    console.error(`[500] Controller failed to execute with a exception for path ${event.resource}`, e);
+    error(`[500] Controller failed to execute with a exception for path ${path}, principal: ${principal}`, e);
     return response({ message: '[500] Internal Server Error' }, code.INTERNAL_SERVER_ERROR);
   }
 };

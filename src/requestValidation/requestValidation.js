@@ -10,11 +10,22 @@ const validateObject = (propNames, schemaNode, bodyNode) => {
     return { [propNames.length > 0 ? propNames.join('.') : 'body']: 'must be of type object' };
   }
   if (bodyNode && bodyNode.constructor === Object) {
+    const schemaKeys = schemaNode.strict && schemaNode.properties && Object.keys(schemaNode.properties);
+
     return {
       /** Recursive call to each of the properties of the object */
       ...Object.entries(schemaNode.properties || {}).reduce((errors, [propName, propNode]) => {
         return merge(errors, validateNode(propNode, bodyNode[propName], propNames.concat([propName])));
       }, {}),
+
+      ...(schemaNode.strict &&
+        schemaNode.properties &&
+        Object.keys(bodyNode).reduce((acc, k) => {
+          if (!schemaKeys.includes(k)) {
+            return { ...acc, [`${[propNames.length > 0 ? `${propNames.join('.')}.` : '']}${k}`]: 'is not allowed on this object' };
+          }
+          return acc;
+        }, {})),
 
       /** Call Function if exists */
       ...(schemaNode.function && schemaNode.function(propNames.length > 0 ? propNames.join('.') : 'body', schemaNode, bodyNode))
@@ -63,7 +74,7 @@ const validateString = (propNames, schemaNode, bodyNode) => {
   }
   /** Check if String matches a pattern if pattern exists */
   if (schemaNode.pattern && !new RegExp(schemaNode.pattern).test(bodyNode)) {
-    return { [propNames.join('.')]: 'does not match pattern' };
+    return { [propNames.join('.')]: `does not match pattern${schemaNode.patternHelper ? ` (${schemaNode.patternHelper})` : ''}` };
   }
   /** Check if String matches function if function exists */
   if (schemaNode.function) {
@@ -95,7 +106,7 @@ const validateNumber = (propNames, schemaNode, bodyNode) => {
   }
   /** Check if Number matches a pattern if pattern exists */
   if (schemaNode.pattern && !new RegExp(schemaNode.pattern).test(bodyNode)) {
-    return { [propNames.join('.')]: 'does not match pattern' };
+    return { [propNames.join('.')]: `does not match pattern${schemaNode.patternHelper ? ` (${schemaNode.patternHelper})` : ''}` };
   }
   /** Check if Number is between min and max if both exists */
   if (typeof schemaNode.min === 'number' && typeof schemaNode.max === 'number') {
@@ -119,7 +130,7 @@ const validateNumber = (propNames, schemaNode, bodyNode) => {
   return {};
 };
 
-const validateNode = (schemaNode, bodyNode, propNames = []) => {
+export const validateNode = (schemaNode, bodyNode, propNames = []) => {
   switch (schemaNode.type) {
     case 'object':
       return validateObject(propNames, schemaNode, bodyNode);
@@ -140,14 +151,13 @@ const validateNode = (schemaNode, bodyNode, propNames = []) => {
 
 const merge = (object1, object2) => ({ ...object1, ...object2 });
 
-const makeResponseFromErrors = (validationErrors) => {
+export const makeResponseFromErrors = (validationErrors) => {
   console.info('[400] Validation Errors - ', JSON.stringify(validationErrors));
   return response({ message: 'Validation Errors', validationErrors }, code.BAD_REQUEST);
 };
 
-const validateRequest = (requestSchema, event) => {
+export const validateRequest = (requestSchema, body) => {
   try {
-    const body = event.body && JSON.parse(event.body);
     const validationErrors = validateNode(requestSchema, body);
     if (isEmptyObject(validationErrors)) {
       return { valid: true };
@@ -159,3 +169,4 @@ const validateRequest = (requestSchema, event) => {
 };
 
 export default validateRequest;
+
