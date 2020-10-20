@@ -1,4 +1,4 @@
-import { code, response } from '../controller/controller';
+import { code, response } from '../utils/http';
 const isEmptyObject = (obj) => Object.entries(obj).length === 0 && obj.constructor === Object;
 
 const validateObject = (propNames, schemaNode, bodyNode) => {
