@@ -18,5 +18,8 @@
   "license": "MIT",
   "dependencies": {
     "@stackcrafters/config-babel": "0.0.8"
+  },
+  "scripts": {
+    "test": "jest"
   }
 }

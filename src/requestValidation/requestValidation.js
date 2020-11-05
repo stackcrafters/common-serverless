@@ -45,6 +45,22 @@ const validateArray = (propNames, schemaNode, bodyNode) => {
     return { [propNames.length > 0 ? propNames.join('.') : 'body']: 'must be of type array' };
   }
 
+  /** Check if length is between min and max if both exists */
+  if (typeof schemaNode.minLength === 'number' && typeof schemaNode.maxLength === 'number') {
+    if (bodyNode.length < schemaNode.minLength || bodyNode.length > schemaNode.maxLength) {
+      return { [propNames.length > 0 ? propNames.join('.') : 'body']: `length must be between ${schemaNode.minLength} and ${schemaNode.maxLength}` };
+    }
+  } else {
+    /** Check if length is greater than min (only one exists [not between]) */
+    if (typeof schemaNode.minLength === 'number' && bodyNode.length < schemaNode.minLength) {
+      return { [propNames.length > 0 ? propNames.join('.') : 'body']: `length must be at least ${schemaNode.minLength}` };
+    }
+    /** Check if length is less than max (only one exists [not between]) */
+    if (typeof schemaNode.maxLength === 'number' && bodyNode.length > schemaNode.maxLength) {
+      return { [propNames.length > 0 ? propNames.join('.') : 'body']: `length must not exceed ${schemaNode.maxLength}` };
+    }
+  }
+
   if (Array.isArray(bodyNode)) {
     return {
       /** Recursive call to each of the properties of the array */

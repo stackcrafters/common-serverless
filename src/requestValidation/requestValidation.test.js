@@ -14,7 +14,8 @@ const setupSchema = ({ type, required, func, properties, pattern, patternHelper,
 };
 
 const setupSchemaObject = (required, func, properties, strict) => setupSchema({ type: 'object', required, func, properties, strict });
-const setupSchemaArray = (required, func, properties) => setupSchema({ type: 'array', required, func, properties });
+const setupSchemaArray = (required, func, properties, minLength, maxLength) =>
+  setupSchema({ type: 'array', required, func, properties, minLength, maxLength });
 const setupSchemaString = (required, pattern, func, patternHelper) =>
   setupSchema({ type: 'string', required, pattern, func, patternHelper });
 const setupSchemaNumber = (required, pattern, min, max, func) => setupSchema({ type: 'number', required, pattern, func, min, max });
@@ -126,14 +127,51 @@ describe('type validation for array', () => {
       );
       expect(valid).toBe(false);
     });
+    describe('array length', () => {
+      it('array - length below min', async () => {
+        requestSchema = setupSchemaArray(true, false, setupSchemaNumber(true), 2, undefined);
+        const { valid, validationResponse } = await validateRequest(requestSchema, [1]);
+        expect(JSON.parse(validationResponse.body)).toEqual(
+          expect.objectContaining({ validationErrors: expect.objectContaining({ body: 'length must be at least 2' }) })
+        );
+        expect(valid).toBe(false);
+      });
+      it('array - length above max', async () => {
+        requestSchema = setupSchemaArray(true, false, setupSchemaNumber(true), undefined, 4);
+        const { valid, validationResponse } = await validateRequest(requestSchema, [1, 2, 3, 4, 5]);
+        expect(JSON.parse(validationResponse.body)).toEqual(
+          expect.objectContaining({ validationErrors: expect.objectContaining({ body: 'length must not exceed 4' }) })
+        );
+        expect(valid).toBe(false);
+      });
+    });
+    describe('array length between', () => {
+      beforeEach(() => {
+        requestSchema = setupSchemaArray(true, false, setupSchemaNumber(true), 2, 4);
+      });
+      it('array - length below min', async () => {
+        const { valid, validationResponse } = await validateRequest(requestSchema, [1]);
+        expect(JSON.parse(validationResponse.body)).toEqual(
+          expect.objectContaining({ validationErrors: expect.objectContaining({ body: 'length must be between 2 and 4' }) })
+        );
+        expect(valid).toBe(false);
+      });
+      it('array - length above max', async () => {
+        const { valid, validationResponse } = await validateRequest(requestSchema, [1, 2, 3, 4, 5]);
+        expect(JSON.parse(validationResponse.body)).toEqual(
+          expect.objectContaining({ validationErrors: expect.objectContaining({ body: 'length must be between 2 and 4' }) })
+        );
+        expect(valid).toBe(false);
+      });
+    });
   });
   describe('return valid:true', () => {
     describe('required:true', () => {
       beforeEach(() => {
-        requestSchema = setupSchemaArray(true, () => ({}), setupSchemaArray(true));
+        requestSchema = setupSchemaArray(true, () => ({}), setupSchemaArray(true), 2, 4);
       });
       it('array - has no errors', async () => {
-        const { valid } = await validateRequest(requestSchema, [[]]);
+        const { valid } = await validateRequest(requestSchema, [[], [], []]);
         expect(valid).toBe(true);
       });
     });
