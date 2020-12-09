@@ -2,9 +2,9 @@
   "name": "@stackcrafters/common-serverless",
   "description": "A package that provides serverless setup with babel",
   "version": "1.0.6",
-  "main": "src/index.js",
+  "main": "lib/index.js",
   "files": [
-    "/src",
+    "/lib",
     "package.json"
   ],
   "repository": {
@@ -20,6 +20,12 @@
     "@stackcrafters/config-babel": "0.0.8"
   },
   "scripts": {
-    "test": "jest"
+    "clean": "rimraf lib",
+    "lint": "eslint ./src",
+    "build": "npm run clean && npm run lint && babel ./src -d ./lib --source-maps --ignore '**/*.test.js'",
+    "watch": "babel ./src -d ./lib --source-maps --watch --ignore '**/*.test.js'",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "prepublishOnly": "npm run build"
   }
 }
