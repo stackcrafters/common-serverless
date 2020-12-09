@@ -48,7 +48,9 @@ const validateArray = (propNames, schemaNode, bodyNode) => {
   /** Check if length is between min and max if both exists */
   if (typeof schemaNode.minLength === 'number' && typeof schemaNode.maxLength === 'number') {
     if (bodyNode.length < schemaNode.minLength || bodyNode.length > schemaNode.maxLength) {
-      return { [propNames.length > 0 ? propNames.join('.') : 'body']: `length must be between ${schemaNode.minLength} and ${schemaNode.maxLength}` };
+      return {
+        [propNames.length > 0 ? propNames.join('.') : 'body']: `length must be between ${schemaNode.minLength} and ${schemaNode.maxLength}`
+      };
     }
   } else {
     /** Check if length is greater than min (only one exists [not between]) */
@@ -185,4 +187,3 @@ export const validateRequest = (requestSchema, body) => {
 };
 
 export default validateRequest;
-
