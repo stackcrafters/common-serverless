@@ -23,9 +23,8 @@ export default (requestSchema, lambdaFunc) => async (event, context) => {
   }
 
   try {
-    debug(`Using request schema: ${process.env.REQUEST_SCHEMA} - ${path}`);
-    if (process.env.REQUEST_SCHEMA && !requestSchema) {
-      error(`[500] The request schema was not found for path: ${path}, schema: ${process.env.REQUEST_SCHEMA}`);
+    if (requestSchema && typeof requestSchema?.type === 'string') {
+      error(`[500] The request schema was not found for path: ${path}`);
       return messageResponse('Internal Server Error', code.INTERNAL_SERVER_ERROR);
     }
     if (requestSchema) {
