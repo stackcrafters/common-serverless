@@ -1,5 +1,1 @@
-export default {
-  default: {
-    type: 'ignore'
-  }
-};
+export default { type: 'ignore' };

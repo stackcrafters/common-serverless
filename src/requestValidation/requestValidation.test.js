@@ -1,27 +1,26 @@
-import validateRequest from './RequestValidation';
+import validateRequest from './requestValidation';
 
-const setupEvent = ({ principalId, pathParameters, body }) => {
-  return { requestContext: { authorizer: { principalId } }, pathParameters, body: body ? JSON.stringify(body) : body };
-};
-
-const setupSchema = ({ type, required, func, properties, pattern, ...more }) => {
+const setupSchema = ({ type, required, func, properties, pattern, patternHelper, strict, ...more }) => {
   return {
     type: type,
     ...(required && { required }),
     ...(func && { function: func }),
     ...(properties && { properties }),
     ...(pattern && { pattern }),
+    ...(patternHelper && { patternHelper }),
+    ...(strict && { strict }),
     ...more
   };
 };
 
-const setupSchemaObject = (required, func, properties) => setupSchema({ type: 'object', required, func, properties });
-const setupSchemaArray = (required, func, properties) => setupSchema({ type: 'array', required, func, properties });
-const setupSchemaString = (required, pattern, func) => setupSchema({ type: 'string', required, pattern, func });
+const setupSchemaObject = (required, func, properties, strict) => setupSchema({ type: 'object', required, func, properties, strict });
+const setupSchemaArray = (required, func, properties, minLength, maxLength) =>
+  setupSchema({ type: 'array', required, func, properties, minLength, maxLength });
+const setupSchemaString = (required, pattern, func, patternHelper) =>
+  setupSchema({ type: 'string', required, pattern, func, patternHelper });
 const setupSchemaNumber = (required, pattern, min, max, func) => setupSchema({ type: 'number', required, pattern, func, min, max });
 const setupSchemaBoolean = (required) => setupSchema({ type: 'boolean', required });
 
-let event;
 let requestSchema;
 
 beforeEach(() => {
@@ -31,37 +30,45 @@ beforeEach(() => {
 describe('type validation for object', () => {
   describe('return valid:false - bad request', () => {
     beforeEach(() => {
-      requestSchema = setupSchemaObject(true, () => ({ body: 'function has errors' }), {
-        a: setupSchemaObject(true, false, { b: setupSchemaObject(true) })
-      });
+      requestSchema = setupSchemaObject(
+        true,
+        () => ({ body: 'function has errors' }),
+        {
+          a: setupSchemaObject(true, false, { b: setupSchemaObject(true) })
+        },
+        true
+      );
     });
     it('object - is required', async () => {
-      event = setupEvent({ body: undefined });
-      const { valid, validationResponse } = await validateRequest(requestSchema, event);
+      const { valid, validationResponse } = await validateRequest(requestSchema, undefined);
       expect(JSON.parse(validationResponse.body)).toEqual(
         expect.objectContaining({ validationErrors: expect.objectContaining({ body: 'is required' }) })
       );
       expect(valid).toBe(false);
     });
     it('object - is of type object', async () => {
-      event = setupEvent({ body: 'a non object body' });
-      const { valid, validationResponse } = await validateRequest(requestSchema, event);
+      const { valid, validationResponse } = await validateRequest(requestSchema, 'a non object body');
       expect(JSON.parse(validationResponse.body)).toEqual(
         expect.objectContaining({ validationErrors: expect.objectContaining({ body: 'must be of type object' }) })
       );
       expect(valid).toBe(false);
     });
     it('object - properties are recursive', async () => {
-      event = setupEvent({ body: { a: {} } });
-      const { valid, validationResponse } = await validateRequest(requestSchema, event);
+      const { valid, validationResponse } = await validateRequest(requestSchema, { a: {} });
       expect(JSON.parse(validationResponse.body)).toEqual(
         expect.objectContaining({ validationErrors: expect.objectContaining({ 'a.b': 'is required' }) })
       );
       expect(valid).toBe(false);
     });
+    it('object - strict detects additional properties', async () => {
+      const { valid, validationResponse } = await validateRequest(requestSchema, { c: {} });
+      expect(JSON.parse(validationResponse.body)).toEqual(
+        expect.objectContaining({ validationErrors: expect.objectContaining({ c: 'is not allowed on this object' }) })
+      );
+      expect(valid).toBe(false);
+    });
     it('object - function has errors', async () => {
-      event = setupEvent({ body: {} });
-      const { valid, validationResponse } = await validateRequest(requestSchema, event);
+      const { valid, validationResponse } = await validateRequest(requestSchema, {});
       expect(JSON.parse(validationResponse.body)).toEqual(
         expect.objectContaining({ validationErrors: expect.objectContaining({ body: 'function has errors' }) })
       );
@@ -70,11 +77,14 @@ describe('type validation for object', () => {
   });
   describe('return valid:true', () => {
     beforeEach(() => {
-      event = setupEvent({ body: { a: {} } });
-      requestSchema = setupSchemaObject(true, () => ({}), { a: setupSchemaObject(true) });
+      requestSchema = setupSchemaObject(true, () => ({}), { a: setupSchemaObject(true) }, false);
     });
     it('object - has no errors', async () => {
-      const { valid } = await validateRequest(requestSchema, event);
+      const { valid } = await validateRequest(requestSchema, { a: {} });
+      expect(valid).toBe(true);
+    });
+    it('object - when not strict ignore additional properties', async () => {
+      const { valid } = await validateRequest(requestSchema, { a: {}, c: {} });
       expect(valid).toBe(true);
     });
   });
@@ -83,7 +93,6 @@ describe('type validation for object', () => {
 describe('type validation for array', () => {
   describe('return valid:false - bad request', () => {
     beforeEach(() => {
-      event = setupEvent({ body: undefined });
       requestSchema = setupSchemaArray(
         true,
         () => ({ body: 'function has errors' }),
@@ -91,55 +100,87 @@ describe('type validation for array', () => {
       );
     });
     it('array - is required', async () => {
-      const { valid, validationResponse } = await validateRequest(requestSchema, event);
+      const { valid, validationResponse } = await validateRequest(requestSchema, undefined);
       expect(JSON.parse(validationResponse.body)).toEqual(
         expect.objectContaining({ validationErrors: expect.objectContaining({ body: 'is required' }) })
       );
       expect(valid).toBe(false);
     });
     it('array - is of type array', async () => {
-      event = setupEvent({ body: 'a non array body' });
-      const { valid, validationResponse } = await validateRequest(requestSchema, event);
+      const { valid, validationResponse } = await validateRequest(requestSchema, 'a non array body');
       expect(JSON.parse(validationResponse.body)).toEqual(
         expect.objectContaining({ validationErrors: expect.objectContaining({ body: 'must be of type array' }) })
       );
       expect(valid).toBe(false);
     });
     it('array - properties are recursive', async () => {
-      event = setupEvent({ body: [['']] });
-      const { valid, validationResponse } = await validateRequest(requestSchema, event);
+      const { valid, validationResponse } = await validateRequest(requestSchema, [['']]);
       expect(JSON.parse(validationResponse.body)).toEqual(
         expect.objectContaining({ validationErrors: expect.objectContaining({ 'index-0.index-0': 'must be of type array' }) })
       );
       expect(valid).toBe(false);
     });
     it('array - function has errors', async () => {
-      event = setupEvent({ body: [] });
-      const { valid, validationResponse } = await validateRequest(requestSchema, event);
+      const { valid, validationResponse } = await validateRequest(requestSchema, []);
       expect(JSON.parse(validationResponse.body)).toEqual(
         expect.objectContaining({ validationErrors: expect.objectContaining({ body: 'function has errors' }) })
       );
       expect(valid).toBe(false);
     });
+    describe('array length', () => {
+      it('array - length below min', async () => {
+        requestSchema = setupSchemaArray(true, false, setupSchemaNumber(true), 2, undefined);
+        const { valid, validationResponse } = await validateRequest(requestSchema, [1]);
+        expect(JSON.parse(validationResponse.body)).toEqual(
+          expect.objectContaining({ validationErrors: expect.objectContaining({ body: 'length must be at least 2' }) })
+        );
+        expect(valid).toBe(false);
+      });
+      it('array - length above max', async () => {
+        requestSchema = setupSchemaArray(true, false, setupSchemaNumber(true), undefined, 4);
+        const { valid, validationResponse } = await validateRequest(requestSchema, [1, 2, 3, 4, 5]);
+        expect(JSON.parse(validationResponse.body)).toEqual(
+          expect.objectContaining({ validationErrors: expect.objectContaining({ body: 'length must not exceed 4' }) })
+        );
+        expect(valid).toBe(false);
+      });
+    });
+    describe('array length between', () => {
+      beforeEach(() => {
+        requestSchema = setupSchemaArray(true, false, setupSchemaNumber(true), 2, 4);
+      });
+      it('array - length below min', async () => {
+        const { valid, validationResponse } = await validateRequest(requestSchema, [1]);
+        expect(JSON.parse(validationResponse.body)).toEqual(
+          expect.objectContaining({ validationErrors: expect.objectContaining({ body: 'length must be between 2 and 4' }) })
+        );
+        expect(valid).toBe(false);
+      });
+      it('array - length above max', async () => {
+        const { valid, validationResponse } = await validateRequest(requestSchema, [1, 2, 3, 4, 5]);
+        expect(JSON.parse(validationResponse.body)).toEqual(
+          expect.objectContaining({ validationErrors: expect.objectContaining({ body: 'length must be between 2 and 4' }) })
+        );
+        expect(valid).toBe(false);
+      });
+    });
   });
   describe('return valid:true', () => {
     describe('required:true', () => {
       beforeEach(() => {
-        event = setupEvent({ body: [[]] });
-        requestSchema = setupSchemaArray(true, () => ({}), setupSchemaArray(true));
+        requestSchema = setupSchemaArray(true, () => ({}), setupSchemaArray(true), 2, 4);
       });
       it('array - has no errors', async () => {
-        const { valid } = await validateRequest(requestSchema, event);
+        const { valid } = await validateRequest(requestSchema, [[], [], []]);
         expect(valid).toBe(true);
       });
     });
     describe('required:false', () => {
       beforeEach(() => {
-        event = setupEvent({ body: undefined });
         requestSchema = setupSchemaArray(false, () => ({}));
       });
       it('array - has no errors', async () => {
-        const r = await validateRequest(requestSchema, event);
+        const r = await validateRequest(requestSchema, undefined);
         expect(r.valid).toBe(true);
       });
     });
@@ -154,32 +195,38 @@ describe('type validation for string', () => {
       });
     });
     it('string - is required', async () => {
-      event = setupEvent({ body: { a: undefined } });
-      const { valid, validationResponse } = await validateRequest(requestSchema, event);
+      const { valid, validationResponse } = await validateRequest(requestSchema, { a: undefined });
       expect(JSON.parse(validationResponse.body)).toEqual(
         expect.objectContaining({ validationErrors: expect.objectContaining({ a: 'is required' }) })
       );
       expect(valid).toBe(false);
     });
     it('string - is of type string', async () => {
-      event = setupEvent({ body: { a: 1 } });
-      const { valid, validationResponse } = await validateRequest(requestSchema, event);
+      const { valid, validationResponse } = await validateRequest(requestSchema, { a: 1 });
       expect(JSON.parse(validationResponse.body)).toEqual(
         expect.objectContaining({ validationErrors: expect.objectContaining({ a: 'must be of type string' }) })
       );
       expect(valid).toBe(false);
     });
     it('string - not match pattern', async () => {
-      event = setupEvent({ body: { a: 'A' } });
-      const { valid, validationResponse } = await validateRequest(requestSchema, event);
+      const { valid, validationResponse } = await validateRequest(requestSchema, { a: 'A' });
       expect(JSON.parse(validationResponse.body)).toEqual(
         expect.objectContaining({ validationErrors: expect.objectContaining({ a: 'does not match pattern' }) })
       );
       expect(valid).toBe(false);
     });
+    it('string - not match pattern with patternHelper', async () => {
+      requestSchema = setupSchemaObject(true, false, {
+        a: setupSchemaString(true, '^[a-z]+$', () => ({ a: 'string function has errors' }), 'a to z only')
+      });
+      const { valid, validationResponse } = await validateRequest(requestSchema, { a: 'A' });
+      expect(JSON.parse(validationResponse.body)).toEqual(
+        expect.objectContaining({ validationErrors: expect.objectContaining({ a: 'does not match pattern (a to z only)' }) })
+      );
+      expect(valid).toBe(false);
+    });
     it('string - function has errors', async () => {
-      event = setupEvent({ body: { a: 'a' } });
-      const { valid, validationResponse } = await validateRequest(requestSchema, event);
+      const { valid, validationResponse } = await validateRequest(requestSchema, { a: 'a' });
       expect(JSON.parse(validationResponse.body)).toEqual(
         expect.objectContaining({ validationErrors: expect.objectContaining({ a: 'string function has errors' }) })
       );
@@ -188,21 +235,19 @@ describe('type validation for string', () => {
   });
   describe('return valid:true', () => {
     beforeEach(() => {
-      event = setupEvent({ body: { a: 'a' } });
       requestSchema = setupSchemaObject(true, false, {
         a: setupSchemaString(true, '^[a-z]+$', () => ({}))
       });
     });
     it('string - has no errors', async () => {
-      const { valid } = await validateRequest(requestSchema, event);
+      const { valid } = await validateRequest(requestSchema, { a: 'a' });
       expect(valid).toBe(true);
     });
     it('string - not required with defined pattern', async () => {
       requestSchema = setupSchemaObject(true, false, {
         a: setupSchemaString(false, '^[a-z]+$', () => ({}))
       });
-      event = setupEvent({ body: { a: '' } });
-      const { valid } = await validateRequest(requestSchema, event);
+      const { valid } = await validateRequest(requestSchema, { a: '' });
       expect(valid).toBe(true);
     });
   });
@@ -216,62 +261,55 @@ describe('type validation for number', () => {
       });
     });
     it('number - is required', async () => {
-      event = setupEvent({ body: { a: undefined } });
-      const { valid, validationResponse } = await validateRequest(requestSchema, event);
+      const { valid, validationResponse } = await validateRequest(requestSchema, { a: undefined });
       expect(JSON.parse(validationResponse.body)).toEqual(
         expect.objectContaining({ validationErrors: expect.objectContaining({ a: 'is required' }) })
       );
       expect(valid).toBe(false);
     });
     it('number - is of type string', async () => {
-      event = setupEvent({ body: { a: '1' } });
-      const { valid, validationResponse } = await validateRequest(requestSchema, event);
+      const { valid, validationResponse } = await validateRequest(requestSchema, { a: '1' });
       expect(JSON.parse(validationResponse.body)).toEqual(
         expect.objectContaining({ validationErrors: expect.objectContaining({ a: 'must be of type number' }) })
       );
       expect(valid).toBe(false);
     });
     it('number - not match pattern', async () => {
-      event = setupEvent({ body: { a: 0 } });
-      const { valid, validationResponse } = await validateRequest(requestSchema, event);
+      const { valid, validationResponse } = await validateRequest(requestSchema, { a: 0 });
       expect(JSON.parse(validationResponse.body)).toEqual(
         expect.objectContaining({ validationErrors: expect.objectContaining({ a: 'does not match pattern' }) })
       );
       expect(valid).toBe(false);
     });
     it('number - not between min and max', async () => {
-      event = setupEvent({ body: { a: 1 } });
-      const { valid, validationResponse } = await validateRequest(requestSchema, event);
+      const { valid, validationResponse } = await validateRequest(requestSchema, { a: 1 });
       expect(JSON.parse(validationResponse.body)).toEqual(
         expect.objectContaining({ validationErrors: expect.objectContaining({ a: 'must be between 2 and 9' }) })
       );
       expect(valid).toBe(false);
     });
     it('number - not less than min', async () => {
-      event = setupEvent({ body: { a: 1 } });
       requestSchema = setupSchemaObject(true, false, {
         a: setupSchemaNumber(true, false, 2, undefined)
       });
-      const { valid, validationResponse } = await validateRequest(requestSchema, event);
+      const { valid, validationResponse } = await validateRequest(requestSchema, { a: 1 });
       expect(JSON.parse(validationResponse.body)).toEqual(
         expect.objectContaining({ validationErrors: expect.objectContaining({ a: 'must be greater than 2' }) })
       );
       expect(valid).toBe(false);
     });
     it('number - not greater than max', async () => {
-      event = setupEvent({ body: { a: 2 } });
       requestSchema = setupSchemaObject(true, false, {
         a: setupSchemaNumber(true, false, undefined, 1)
       });
-      const { valid, validationResponse } = await validateRequest(requestSchema, event);
+      const { valid, validationResponse } = await validateRequest(requestSchema, { a: 2 });
       expect(JSON.parse(validationResponse.body)).toEqual(
         expect.objectContaining({ validationErrors: expect.objectContaining({ a: 'must be less than 1' }) })
       );
       expect(valid).toBe(false);
     });
     it('number - function has errors', async () => {
-      event = setupEvent({ body: { a: 2 } });
-      const { valid, validationResponse } = await validateRequest(requestSchema, event);
+      const { valid, validationResponse } = await validateRequest(requestSchema, { a: 2 });
       expect(JSON.parse(validationResponse.body)).toEqual(
         expect.objectContaining({ validationErrors: expect.objectContaining({ a: 'number function has errors' }) })
       );
@@ -280,13 +318,12 @@ describe('type validation for number', () => {
   });
   describe('return valid:true', () => {
     beforeEach(() => {
-      event = setupEvent({ body: { a: 1 } });
       requestSchema = setupSchemaObject(true, false, {
         a: setupSchemaNumber(true, '^[0-9]+$', 0, 9, () => ({}))
       });
     });
     it('number - has no errors', async () => {
-      const { valid } = await validateRequest(requestSchema, event);
+      const { valid } = await validateRequest(requestSchema, { a: 1 });
       expect(valid).toBe(true);
     });
   });
@@ -300,16 +337,14 @@ describe('type validation for boolean', () => {
       });
     });
     it('is missing', async () => {
-      event = setupEvent({ body: {} });
-      const { valid, validationResponse } = await validateRequest(requestSchema, event);
+      const { valid, validationResponse } = await validateRequest(requestSchema, {});
       expect(JSON.parse(validationResponse.body)).toEqual(
         expect.objectContaining({ validationErrors: expect.objectContaining({ a: 'is required' }) })
       );
       expect(valid).toBe(false);
     });
     it('is not of type boolean', async () => {
-      event = setupEvent({ body: { a: 0 } });
-      const { valid, validationResponse } = await validateRequest(requestSchema, event);
+      const { valid, validationResponse } = await validateRequest(requestSchema, { a: 0 });
       expect(JSON.parse(validationResponse.body)).toEqual(
         expect.objectContaining({ validationErrors: expect.objectContaining({ a: 'must be of type boolean' }) })
       );
@@ -318,8 +353,7 @@ describe('type validation for boolean', () => {
   });
   describe('return valid', () => {
     it('is present', async () => {
-      event = setupEvent({ body: { a: false } });
-      const { valid, validationResponse } = await validateRequest(requestSchema, event);
+      const { valid, validationResponse } = await validateRequest(requestSchema, { a: false });
       expect(valid).toBe(true);
     });
   });
