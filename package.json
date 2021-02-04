@@ -21,7 +21,7 @@
   },
   "scripts": {
     "clean": "rimraf lib",
-    "lint": "eslint ./src",
+    "lint": "eslint ./src --fix",
     "build": "npm run clean && npm run lint && babel ./src -d ./lib --source-maps --ignore '**/*.test.js'",
     "watch": "babel ./src -d ./lib --source-maps --watch --ignore '**/*.test.js'",
     "test": "jest",
