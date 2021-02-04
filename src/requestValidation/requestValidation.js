@@ -1,4 +1,5 @@
 import { code, response } from '../utils/http';
+
 const isEmptyObject = (obj) => Object.entries(obj).length === 0 && obj.constructor === Object;
 
 const validateObject = (propNames, schemaNode, bodyNode) => {
@@ -22,7 +23,10 @@ const validateObject = (propNames, schemaNode, bodyNode) => {
         schemaNode.properties &&
         Object.keys(bodyNode).reduce((acc, k) => {
           if (!schemaKeys.includes(k)) {
-            return { ...acc, [`${[propNames.length > 0 ? `${propNames.join('.')}.` : '']}${k}`]: 'is not allowed on this object' };
+            return {
+              ...acc,
+              [`${[propNames.length > 0 ? `${propNames.join('.')}.` : '']}${k}`]: 'is not allowed on this object'
+            };
           }
           return acc;
         }, {})),
@@ -60,6 +64,32 @@ const validateArray = (propNames, schemaNode, bodyNode) => {
     /** Check if length is less than max (only one exists [not between]) */
     if (typeof schemaNode.maxLength === 'number' && bodyNode.length > schemaNode.maxLength) {
       return { [propNames.length > 0 ? propNames.join('.') : 'body']: `length must not exceed ${schemaNode.maxLength}` };
+    }
+  }
+
+  if (schemaNode.uniqueEntries) {
+    const uniqueEntriesErrors = Object.entries(
+      bodyNode.reduce((acc, o, i) => {
+        const value = typeof schemaNode.uniqueEntries === 'string' ? o[schemaNode.uniqueEntries] : o;
+        if (value) {
+          acc[value] = acc[value] || [];
+          acc[value].push(i);
+        }
+        return acc;
+      }, {})
+    )
+      .filter(([_, i]) => i.length > 1)
+      .reduce((acc, [p, i]) => {
+        const schemaUniqPropName = typeof schemaNode.uniqueEntries === 'string' ? `.${schemaNode.uniqueEntries}` : '';
+        i.forEach((ii, ind) => {
+          if (ind > 0) {
+            acc[`${propNames.length > 0 ? `${propNames.join('.')}.` : ''}index-${ii}${schemaUniqPropName}`] = `is a duplicate (${p})`;
+          }
+        });
+        return acc;
+      }, {});
+    if (!isEmptyObject(uniqueEntriesErrors)) {
+      return uniqueEntriesErrors;
     }
   }
 

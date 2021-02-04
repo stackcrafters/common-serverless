@@ -13,12 +13,27 @@ const setupSchema = ({ type, required, func, properties, pattern, patternHelper,
   };
 };
 
-const setupSchemaObject = (required, func, properties, strict) => setupSchema({ type: 'object', required, func, properties, strict });
-const setupSchemaArray = (required, func, properties, minLength, maxLength) =>
-  setupSchema({ type: 'array', required, func, properties, minLength, maxLength });
+const setupSchemaObject = (required, func, properties, strict) =>
+  setupSchema({
+    type: 'object',
+    required,
+    func,
+    properties,
+    strict
+  });
+const setupSchemaArray = (required, func, properties, minLength, maxLength, uniqueEntries) =>
+  setupSchema({ type: 'array', required, func, properties, minLength, maxLength, uniqueEntries });
 const setupSchemaString = (required, pattern, func, patternHelper) =>
   setupSchema({ type: 'string', required, pattern, func, patternHelper });
-const setupSchemaNumber = (required, pattern, min, max, func) => setupSchema({ type: 'number', required, pattern, func, min, max });
+const setupSchemaNumber = (required, pattern, min, max, func) =>
+  setupSchema({
+    type: 'number',
+    required,
+    pattern,
+    func,
+    min,
+    max
+  });
 const setupSchemaBoolean = (required) => setupSchema({ type: 'boolean', required });
 
 let requestSchema;
@@ -162,6 +177,108 @@ describe('type validation for array', () => {
           expect.objectContaining({ validationErrors: expect.objectContaining({ body: 'length must be between 2 and 4' }) })
         );
         expect(valid).toBe(false);
+      });
+    });
+    describe('unique entries only', () => {
+      describe('primitive values', () => {
+        beforeEach(() => {
+          requestSchema = setupSchemaArray(true, false, setupSchemaNumber(true), 2, undefined, true);
+        });
+        it('array - contains duplicates', () => {
+          const { valid, validationResponse } = validateRequest(requestSchema, [1, 1, 2, 1, 3]);
+          expect(valid).toBe(false);
+          expect(JSON.parse(validationResponse.body)).toEqual(
+            expect.objectContaining({
+              validationErrors: {
+                'index-1': 'is a duplicate (1)',
+                'index-3': 'is a duplicate (1)'
+              }
+            })
+          );
+        });
+        it('array - does not contain duplicates', () => {
+          const { valid } = validateRequest(requestSchema, [1, 2, 3]);
+          expect(valid).toBe(true);
+        });
+        it('array - contains duplicates (allowed)', () => {
+          requestSchema = setupSchemaArray(true, false, setupSchemaNumber(true), 2, undefined, false);
+          const { valid } = validateRequest(requestSchema, [1, 1, 2, 1, 3]);
+          expect(valid).toBe(true);
+        });
+      });
+      describe('object prop', () => {
+        beforeEach(() => {
+          requestSchema = setupSchemaArray(
+            true,
+            false,
+            setupSchemaObject(true, false, { prop: setupSchemaNumber(true) }),
+            2,
+            undefined,
+            'prop'
+          );
+        });
+        it('array - contains duplicates', () => {
+          const { valid, validationResponse } = validateRequest(requestSchema, [{ prop: 1 }, { prop: 1 }, { prop: 2 }, { prop: 1 }]);
+          expect(valid).toBe(false);
+          expect(JSON.parse(validationResponse.body)).toEqual(
+            expect.objectContaining({
+              validationErrors: {
+                'index-1.prop': 'is a duplicate (1)',
+                'index-3.prop': 'is a duplicate (1)'
+              }
+            })
+          );
+        });
+        it('array - does not contain duplicates', () => {
+          const { valid } = validateRequest(requestSchema, [{ prop: 1 }, { prop: 2 }, { prop: 3 }]);
+          expect(valid).toBe(true);
+        });
+        it('array - contains duplicates (allowed)', () => {
+          requestSchema = setupSchemaArray(
+            true,
+            false,
+            setupSchemaObject(true, false, { prop: setupSchemaNumber(true) }),
+            2,
+            undefined,
+            false
+          );
+          const { valid } = validateRequest(requestSchema, [{ prop: 1 }, { prop: 1 }, { prop: 2 }, { prop: 1 }]);
+          expect(valid).toBe(true);
+        });
+      });
+      describe('nested', () => {
+        it('array - contains duplicates', async () => {
+          requestSchema = setupSchemaArray(
+            true,
+            false,
+            setupSchemaArray(true, false, setupSchemaObject(true, false, { prop: setupSchemaNumber(true) }), 2, undefined, 'prop')
+          );
+          const { valid, validationResponse } = await validateRequest(requestSchema, [
+            [{ prop: 1 }, { prop: 1 }, { prop: 2 }, { prop: 1 }]
+          ]);
+          expect(valid).toBe(false);
+          expect(JSON.parse(validationResponse.body)).toEqual(
+            expect.objectContaining({
+              validationErrors: {
+                'index-0.index-1.prop': 'is a duplicate (1)',
+                'index-0.index-3.prop': 'is a duplicate (1)'
+              }
+            })
+          );
+        });
+        it('array of primitives - contains duplicates', async () => {
+          requestSchema = setupSchemaArray(true, false, setupSchemaArray(true, false, setupSchemaNumber(true), 2, undefined, true));
+          const { valid, validationResponse } = await validateRequest(requestSchema, [[1, 1, 2, 1]]);
+          expect(valid).toBe(false);
+          expect(JSON.parse(validationResponse.body)).toEqual(
+            expect.objectContaining({
+              validationErrors: {
+                'index-0.index-1': 'is a duplicate (1)',
+                'index-0.index-3': 'is a duplicate (1)'
+              }
+            })
+          );
+        });
       });
     });
   });
