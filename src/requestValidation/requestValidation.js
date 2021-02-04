@@ -70,7 +70,14 @@ const validateArray = (propNames, schemaNode, bodyNode) => {
   if (schemaNode.uniqueEntries) {
     const uniqueEntriesErrors = Object.entries(
       bodyNode.reduce((acc, o, i) => {
-        const value = typeof schemaNode.uniqueEntries === 'string' ? o[schemaNode.uniqueEntries] : o;
+        let value;
+        if (typeof schemaNode.uniqueEntries === 'string') {
+          value = o[schemaNode.uniqueEntries];
+        } else if (typeof schemaNode.uniqueEntries === 'function') {
+          value = schemaNode.uniqueEntries(o);
+        } else {
+          value = o;
+        }
         if (value) {
           acc[value] = acc[value] || [];
           acc[value].push(i);

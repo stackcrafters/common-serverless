@@ -246,14 +246,35 @@ describe('type validation for array', () => {
           expect(valid).toBe(true);
         });
       });
+      describe('function', () => {
+        it('array - contains duplicates', () => {
+          requestSchema = setupSchemaArray(
+              true,
+              false,
+              setupSchemaArray(true, false, setupSchemaObject(true, false, { prop: setupSchemaNumber(true) }), 2, undefined, (o) => o.prop)
+          );
+          const { valid, validationResponse } = validateRequest(requestSchema, [
+            [{ prop: 1 }, { prop: 1 }, { prop: 2 }, { prop: 1 }]
+          ]);
+          expect(valid).toBe(false);
+          expect(JSON.parse(validationResponse.body)).toEqual(
+              expect.objectContaining({
+                validationErrors: {
+                  'index-0.index-1': 'is a duplicate (1)',
+                  'index-0.index-3': 'is a duplicate (1)'
+                }
+              })
+          );
+        });
+      })
       describe('nested', () => {
-        it('array - contains duplicates', async () => {
+        it('array - contains duplicates', () => {
           requestSchema = setupSchemaArray(
             true,
             false,
             setupSchemaArray(true, false, setupSchemaObject(true, false, { prop: setupSchemaNumber(true) }), 2, undefined, 'prop')
           );
-          const { valid, validationResponse } = await validateRequest(requestSchema, [
+          const { valid, validationResponse } = validateRequest(requestSchema, [
             [{ prop: 1 }, { prop: 1 }, { prop: 2 }, { prop: 1 }]
           ]);
           expect(valid).toBe(false);
