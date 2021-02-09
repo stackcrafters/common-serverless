@@ -249,24 +249,22 @@ describe('type validation for array', () => {
       describe('function', () => {
         it('array - contains duplicates', () => {
           requestSchema = setupSchemaArray(
-              true,
-              false,
-              setupSchemaArray(true, false, setupSchemaObject(true, false, { prop: setupSchemaNumber(true) }), 2, undefined, (o) => o.prop)
+            true,
+            false,
+            setupSchemaArray(true, false, setupSchemaObject(true, false, { prop: setupSchemaNumber(true) }), 2, undefined, (o) => o.prop)
           );
-          const { valid, validationResponse } = validateRequest(requestSchema, [
-            [{ prop: 1 }, { prop: 1 }, { prop: 2 }, { prop: 1 }]
-          ]);
+          const { valid, validationResponse } = validateRequest(requestSchema, [[{ prop: 1 }, { prop: 1 }, { prop: 2 }, { prop: 1 }]]);
           expect(valid).toBe(false);
           expect(JSON.parse(validationResponse.body)).toEqual(
-              expect.objectContaining({
-                validationErrors: {
-                  'index-0.index-1': 'is a duplicate (1)',
-                  'index-0.index-3': 'is a duplicate (1)'
-                }
-              })
+            expect.objectContaining({
+              validationErrors: {
+                'index-0.index-1': 'is a duplicate (1)',
+                'index-0.index-3': 'is a duplicate (1)'
+              }
+            })
           );
         });
-      })
+      });
       describe('nested', () => {
         it('array - contains duplicates', () => {
           requestSchema = setupSchemaArray(
@@ -274,9 +272,7 @@ describe('type validation for array', () => {
             false,
             setupSchemaArray(true, false, setupSchemaObject(true, false, { prop: setupSchemaNumber(true) }), 2, undefined, 'prop')
           );
-          const { valid, validationResponse } = validateRequest(requestSchema, [
-            [{ prop: 1 }, { prop: 1 }, { prop: 2 }, { prop: 1 }]
-          ]);
+          const { valid, validationResponse } = validateRequest(requestSchema, [[{ prop: 1 }, { prop: 1 }, { prop: 2 }, { prop: 1 }]]);
           expect(valid).toBe(false);
           expect(JSON.parse(validationResponse.body)).toEqual(
             expect.objectContaining({

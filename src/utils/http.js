@@ -4,6 +4,7 @@ export const response = (body, statusCode = code.OK, additionalHeaders = {}) => 
     body: JSON.stringify(body),
     headers: {
       'Access-Control-Allow-Origin': '*',
+      'Cache-Control': 'no-store, max-age=0',
       ...additionalHeaders
     }
   };
@@ -14,7 +15,8 @@ export const messageResponse = (message, statusCode = code.FORBIDDEN) => {
     statusCode: statusCode,
     body: JSON.stringify({ statusCode, message }),
     headers: {
-      'Access-Control-Allow-Origin': '*'
+      'Access-Control-Allow-Origin': '*',
+      'Cache-Control': 'no-store, max-age=0'
     }
   };
 };
