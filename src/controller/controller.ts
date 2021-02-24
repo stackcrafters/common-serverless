@@ -31,7 +31,7 @@ export default (requestSchema, lambdaFunc) => async (event, context) => {
       const { valid, validationResponse } = validateRequest(requestSchema, body);
       if (!valid) {
         warn(
-          `[${validationResponse.statusCode}] Validation failed for execution for path: ${path}, principal: ${principal}`,
+          `[${validationResponse?.statusCode}] Validation failed for execution for path: ${path}, principal: ${principal}`,
           validationResponse
         );
         return validationResponse;
