@@ -15,12 +15,14 @@ export enum code {
   TOO_MANY_REQUEST = 429
 }
 
-export const response = (body: any, statusCode = code.OK): Response => {
+export const response = (body: any, statusCode = code.OK, additionalHeaders = {}): Response => {
   return {
     statusCode: statusCode,
     body: JSON.stringify(body),
     headers: {
-      'Access-Control-Allow-Origin': '*'
+      'Access-Control-Allow-Origin': '*',
+      'Cache-Control': 'no-store, max-age=0',
+      ...additionalHeaders
     }
   };
 };
@@ -30,7 +32,8 @@ export const messageResponse = (message: string, statusCode = code.FORBIDDEN): R
     statusCode: statusCode,
     body: JSON.stringify({ statusCode, message }),
     headers: {
-      'Access-Control-Allow-Origin': '*'
+      'Access-Control-Allow-Origin': '*',
+      'Cache-Control': 'no-store, max-age=0'
     }
   };
 };
