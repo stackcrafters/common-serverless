@@ -14,6 +14,7 @@ interface SchemaType {
   patternHelper?: string;
   min?: number;
   max?: number;
+  options?: { label: string; value: string }[];
 }
 
 export interface SchemaNode extends SchemaType {
@@ -165,6 +166,9 @@ const validateString = (propNames: string[], schemaNode: SchemaNode, bodyNode: a
   if (schemaNode.function) {
     return schemaNode.function(propNames.join('.'), schemaNode, bodyNode);
   }
+  if (schemaNode.options && !schemaNode.options.map((n) => n.value).includes(<string>bodyNode)) {
+    return { [propNames.join('.')]: 'not a valid option' };
+  }
   return {};
 };
 
@@ -212,6 +216,9 @@ const validateNumber = (propNames: string[], schemaNode: SchemaNode, bodyNode: a
   /** Check if Number matches function if function exists */
   if (schemaNode.function) {
     return schemaNode.function(propNames.join('.'), schemaNode, bodyNode);
+  }
+  if (schemaNode.options && !schemaNode.options.map((n) => n.value).includes((<number>bodyNode).toString())) {
+    return { [propNames.join('.')]: 'not a valid option' };
   }
   return {};
 };

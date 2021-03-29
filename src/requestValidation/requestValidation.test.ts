@@ -32,16 +32,17 @@ const setupSchemaObject = (required, func?, properties?, strict?) =>
   });
 const setupSchemaArray = (required, func?, properties?, minLength?, maxLength?, uniqueEntries?) =>
   setupSchema({ type: 'array', required, function: func, properties, minLength, maxLength, uniqueEntries });
-const setupSchemaString = (required, pattern?, func?, patternHelper?) =>
-  setupSchema({ type: 'string', required, pattern, function: func, patternHelper });
-const setupSchemaNumber = (required, pattern?, min?, max?, func?) =>
+const setupSchemaString = (required, pattern?, func?, patternHelper?, options?) =>
+  setupSchema({ type: 'string', required, pattern, function: func, patternHelper, options });
+const setupSchemaNumber = (required, pattern?, min?, max?, func?, options?) =>
   setupSchema({
     type: 'number',
     required,
     pattern,
     function: func,
     min,
-    max
+    max,
+    options
   });
 const setupSchemaBoolean = (required) => setupSchema({ type: 'boolean', required });
 
@@ -65,38 +66,38 @@ describe('type validation for object', () => {
     });
     it('object - is required', async () => {
       const { valid, validationResponse } = await validateRequest(requestSchema, undefined);
+      expect(valid).toBe(false);
       expect(JSON.parse(<string>validationResponse?.body)).toEqual(
         expect.objectContaining({ validationErrors: expect.objectContaining({ body: 'is required' }) })
       );
-      expect(valid).toBe(false);
     });
     it('object - is of type object', async () => {
       const { valid, validationResponse } = await validateRequest(requestSchema, 'a non object body');
+      expect(valid).toBe(false);
       expect(JSON.parse(<string>validationResponse?.body)).toEqual(
         expect.objectContaining({ validationErrors: expect.objectContaining({ body: 'must be of type object' }) })
       );
-      expect(valid).toBe(false);
     });
     it('object - properties are recursive', async () => {
       const { valid, validationResponse } = await validateRequest(requestSchema, { a: {} });
+      expect(valid).toBe(false);
       expect(JSON.parse(<string>validationResponse?.body)).toEqual(
         expect.objectContaining({ validationErrors: expect.objectContaining({ 'a.b': 'is required' }) })
       );
-      expect(valid).toBe(false);
     });
     it('object - strict detects additional properties', async () => {
       const { valid, validationResponse } = await validateRequest(requestSchema, { c: {} });
+      expect(valid).toBe(false);
       expect(JSON.parse(<string>validationResponse?.body)).toEqual(
         expect.objectContaining({ validationErrors: expect.objectContaining({ c: 'is not allowed on this object' }) })
       );
-      expect(valid).toBe(false);
     });
     it('object - function has errors', async () => {
       const { valid, validationResponse } = await validateRequest(requestSchema, {});
+      expect(valid).toBe(false);
       expect(JSON.parse(<string>validationResponse?.body)).toEqual(
         expect.objectContaining({ validationErrors: expect.objectContaining({ body: 'function has errors' }) })
       );
-      expect(valid).toBe(false);
     });
   });
   describe('return valid:true', () => {
@@ -125,48 +126,48 @@ describe('type validation for array', () => {
     });
     it('array - is required', async () => {
       const { valid, validationResponse } = await validateRequest(requestSchema, undefined);
+      expect(valid).toBe(false);
       expect(JSON.parse(<string>validationResponse?.body)).toEqual(
         expect.objectContaining({ validationErrors: expect.objectContaining({ body: 'is required' }) })
       );
-      expect(valid).toBe(false);
     });
     it('array - is of type array', async () => {
       const { valid, validationResponse } = await validateRequest(requestSchema, 'a non array body');
+      expect(valid).toBe(false);
       expect(JSON.parse(<string>validationResponse?.body)).toEqual(
         expect.objectContaining({ validationErrors: expect.objectContaining({ body: 'must be of type array' }) })
       );
-      expect(valid).toBe(false);
     });
     it('array - properties are recursive', async () => {
       const { valid, validationResponse } = await validateRequest(requestSchema, [['']]);
+      expect(valid).toBe(false);
       expect(JSON.parse(<string>validationResponse?.body)).toEqual(
         expect.objectContaining({ validationErrors: expect.objectContaining({ 'index-0.index-0': 'must be of type array' }) })
       );
-      expect(valid).toBe(false);
     });
     it('array - function has errors', async () => {
       const { valid, validationResponse } = await validateRequest(requestSchema, []);
+      expect(valid).toBe(false);
       expect(JSON.parse(<string>validationResponse?.body)).toEqual(
         expect.objectContaining({ validationErrors: expect.objectContaining({ body: 'function has errors' }) })
       );
-      expect(valid).toBe(false);
     });
     describe('array length', () => {
       it('array - length below min', async () => {
         requestSchema = setupSchemaArray(true, false, setupSchemaNumber(true), 2, undefined);
         const { valid, validationResponse } = await validateRequest(requestSchema, [1]);
+        expect(valid).toBe(false);
         expect(JSON.parse(<string>validationResponse?.body)).toEqual(
           expect.objectContaining({ validationErrors: expect.objectContaining({ body: 'length must be at least 2' }) })
         );
-        expect(valid).toBe(false);
       });
       it('array - length above max', async () => {
         requestSchema = setupSchemaArray(true, false, setupSchemaNumber(true), undefined, 4);
         const { valid, validationResponse } = await validateRequest(requestSchema, [1, 2, 3, 4, 5]);
+        expect(valid).toBe(false);
         expect(JSON.parse(<string>validationResponse?.body)).toEqual(
           expect.objectContaining({ validationErrors: expect.objectContaining({ body: 'length must not exceed 4' }) })
         );
-        expect(valid).toBe(false);
       });
     });
     describe('array length between', () => {
@@ -175,17 +176,17 @@ describe('type validation for array', () => {
       });
       it('array - length below min', async () => {
         const { valid, validationResponse } = await validateRequest(requestSchema, [1]);
+        expect(valid).toBe(false);
         expect(JSON.parse(<string>validationResponse?.body)).toEqual(
           expect.objectContaining({ validationErrors: expect.objectContaining({ body: 'length must be between 2 and 4' }) })
         );
-        expect(valid).toBe(false);
       });
       it('array - length above max', async () => {
         const { valid, validationResponse } = await validateRequest(requestSchema, [1, 2, 3, 4, 5]);
+        expect(valid).toBe(false);
         expect(JSON.parse(<string>validationResponse?.body)).toEqual(
           expect.objectContaining({ validationErrors: expect.objectContaining({ body: 'length must be between 2 and 4' }) })
         );
-        expect(valid).toBe(false);
       });
     });
     describe('unique entries only', () => {
@@ -339,41 +340,60 @@ describe('type validation for string', () => {
     });
     it('string - is required', async () => {
       const { valid, validationResponse } = await validateRequest(requestSchema, { a: undefined });
+      expect(valid).toBe(false);
       expect(JSON.parse(<string>validationResponse?.body)).toEqual(
         expect.objectContaining({ validationErrors: expect.objectContaining({ a: 'is required' }) })
       );
-      expect(valid).toBe(false);
     });
     it('string - is of type string', async () => {
       const { valid, validationResponse } = await validateRequest(requestSchema, { a: 1 });
+      expect(valid).toBe(false);
       expect(JSON.parse(<string>validationResponse?.body)).toEqual(
         expect.objectContaining({ validationErrors: expect.objectContaining({ a: 'must be of type string' }) })
       );
-      expect(valid).toBe(false);
     });
     it('string - not match pattern', async () => {
       const { valid, validationResponse } = await validateRequest(requestSchema, { a: 'A' });
+      expect(valid).toBe(false);
       expect(JSON.parse(<string>validationResponse?.body)).toEqual(
         expect.objectContaining({ validationErrors: expect.objectContaining({ a: 'does not match pattern' }) })
       );
-      expect(valid).toBe(false);
     });
     it('string - not match pattern with patternHelper', async () => {
       requestSchema = setupSchemaObject(true, false, {
         a: setupSchemaString(true, '^[a-z]+$', () => ({ a: 'string function has errors' }), 'a to z only')
       });
       const { valid, validationResponse } = await validateRequest(requestSchema, { a: 'A' });
+      expect(valid).toBe(false);
       expect(JSON.parse(<string>validationResponse?.body)).toEqual(
         expect.objectContaining({ validationErrors: expect.objectContaining({ a: 'does not match pattern (a to z only)' }) })
       );
-      expect(valid).toBe(false);
     });
     it('string - function has errors', async () => {
       const { valid, validationResponse } = await validateRequest(requestSchema, { a: 'a' });
+      expect(valid).toBe(false);
       expect(JSON.parse(<string>validationResponse?.body)).toEqual(
         expect.objectContaining({ validationErrors: expect.objectContaining({ a: 'string function has errors' }) })
       );
-      expect(valid).toBe(false);
+    });
+    describe('options', () => {
+      beforeEach(() => {
+        requestSchema = setupSchemaObject(true, false, {
+          a: setupSchemaString(true, '^[a-z]+$', undefined, '', [
+            {
+              label: 'x',
+              value: 'x'
+            }
+          ])
+        });
+      });
+      it('not a valid option', async () => {
+        const { valid, validationResponse } = await validateRequest(requestSchema, { a: 'a' });
+        expect(valid).toBe(false);
+        expect(JSON.parse(<string>validationResponse?.body)).toEqual(
+          expect.objectContaining({ validationErrors: expect.objectContaining({ a: 'not a valid option' }) })
+        );
+      });
     });
   });
   describe('return valid:true', () => {
@@ -393,6 +413,17 @@ describe('type validation for string', () => {
       const { valid } = await validateRequest(requestSchema, { a: '' });
       expect(valid).toBe(true);
     });
+    describe('options', () => {
+      beforeEach(() => {
+        requestSchema = setupSchemaObject(true, false, {
+          a: setupSchemaString(true, '^[a-z]+$', undefined, '', [{ label: 'x', value: 'x' }])
+        });
+      });
+      it('valid option', async () => {
+        const { valid } = await validateRequest(requestSchema, { a: 'x' });
+        expect(valid).toBe(true);
+      });
+    });
   });
 });
 
@@ -405,58 +436,72 @@ describe('type validation for number', () => {
     });
     it('number - is required', async () => {
       const { valid, validationResponse } = await validateRequest(requestSchema, { a: undefined });
+      expect(valid).toBe(false);
       expect(JSON.parse(<string>validationResponse?.body)).toEqual(
         expect.objectContaining({ validationErrors: expect.objectContaining({ a: 'is required' }) })
       );
-      expect(valid).toBe(false);
     });
     it('number - is of type string', async () => {
       const { valid, validationResponse } = await validateRequest(requestSchema, { a: '1' });
+      expect(valid).toBe(false);
       expect(JSON.parse(<string>validationResponse?.body)).toEqual(
         expect.objectContaining({ validationErrors: expect.objectContaining({ a: 'must be of type number' }) })
       );
-      expect(valid).toBe(false);
     });
     it('number - not match pattern', async () => {
       const { valid, validationResponse } = await validateRequest(requestSchema, { a: 0 });
+      expect(valid).toBe(false);
       expect(JSON.parse(<string>validationResponse?.body)).toEqual(
         expect.objectContaining({ validationErrors: expect.objectContaining({ a: 'does not match pattern' }) })
       );
-      expect(valid).toBe(false);
     });
     it('number - not between min and max', async () => {
       const { valid, validationResponse } = await validateRequest(requestSchema, { a: 1 });
+      expect(valid).toBe(false);
       expect(JSON.parse(<string>validationResponse?.body)).toEqual(
         expect.objectContaining({ validationErrors: expect.objectContaining({ a: 'must be between 2 and 9' }) })
       );
-      expect(valid).toBe(false);
     });
     it('number - not less than min', async () => {
       requestSchema = setupSchemaObject(true, false, {
         a: setupSchemaNumber(true, false, 2, undefined)
       });
       const { valid, validationResponse } = await validateRequest(requestSchema, { a: 1 });
+      expect(valid).toBe(false);
       expect(JSON.parse(<string>validationResponse?.body)).toEqual(
         expect.objectContaining({ validationErrors: expect.objectContaining({ a: 'must be greater than 2' }) })
       );
-      expect(valid).toBe(false);
     });
     it('number - not greater than max', async () => {
       requestSchema = setupSchemaObject(true, false, {
         a: setupSchemaNumber(true, false, undefined, 1)
       });
       const { valid, validationResponse } = await validateRequest(requestSchema, { a: 2 });
+      expect(valid).toBe(false);
       expect(JSON.parse(<string>validationResponse?.body)).toEqual(
         expect.objectContaining({ validationErrors: expect.objectContaining({ a: 'must be less than 1' }) })
       );
-      expect(valid).toBe(false);
     });
     it('number - function has errors', async () => {
       const { valid, validationResponse } = await validateRequest(requestSchema, { a: 2 });
+      expect(valid).toBe(false);
       expect(JSON.parse(<string>validationResponse?.body)).toEqual(
         expect.objectContaining({ validationErrors: expect.objectContaining({ a: 'number function has errors' }) })
       );
-      expect(valid).toBe(false);
+    });
+    describe('options', () => {
+      beforeEach(() => {
+        requestSchema = setupSchemaObject(true, false, {
+          a: setupSchemaNumber(true, false, undefined, undefined, undefined, [{ label: '1', value: '9' }])
+        });
+      });
+      it('not a valid option', async () => {
+        const { valid, validationResponse } = await validateRequest(requestSchema, { a: 4 });
+        expect(valid).toBe(false);
+        expect(JSON.parse(<string>validationResponse?.body)).toEqual(
+          expect.objectContaining({ validationErrors: expect.objectContaining({ a: 'not a valid option' }) })
+        );
+      });
     });
   });
   describe('return valid:true', () => {
@@ -468,6 +513,17 @@ describe('type validation for number', () => {
     it('number - has no errors', async () => {
       const { valid } = await validateRequest(requestSchema, { a: 1 });
       expect(valid).toBe(true);
+    });
+    describe('options', () => {
+      beforeEach(() => {
+        requestSchema = setupSchemaObject(true, false, {
+          a: setupSchemaNumber(true, false, undefined, undefined, undefined, [{ label: '1', value: '9' }])
+        });
+      });
+      it('valid option', async () => {
+        const { valid } = await validateRequest(requestSchema, { a: 9 });
+        expect(valid).toBe(true);
+      });
     });
   });
 });
@@ -481,17 +537,17 @@ describe('type validation for boolean', () => {
     });
     it('is missing', async () => {
       const { valid, validationResponse } = await validateRequest(requestSchema, {});
+      expect(valid).toBe(false);
       expect(JSON.parse(<string>validationResponse?.body)).toEqual(
         expect.objectContaining({ validationErrors: expect.objectContaining({ a: 'is required' }) })
       );
-      expect(valid).toBe(false);
     });
     it('is not of type boolean', async () => {
       const { valid, validationResponse } = await validateRequest(requestSchema, { a: 0 });
+      expect(valid).toBe(false);
       expect(JSON.parse(<string>validationResponse?.body)).toEqual(
         expect.objectContaining({ validationErrors: expect.objectContaining({ a: 'must be of type boolean' }) })
       );
-      expect(valid).toBe(false);
     });
   });
   describe('return valid', () => {
