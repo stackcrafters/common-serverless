@@ -307,6 +307,25 @@ describe('type validation for array', () => {
           );
         });
       });
+      describe('options', () => {
+        beforeEach(() => {
+          requestSchema = setupSchemaArray(
+            true,
+            false,
+            setupSchemaString(true, '^[a-z]+$', undefined, '', [{ label: 'x', value: 'x' }]),
+            2,
+            undefined,
+            true
+          );
+        });
+        it('rejects invalid options', async () => {
+          const { valid, validationResponse } = await validateRequest(requestSchema, ['x', 'y']);
+          expect(valid).toBe(false);
+          expect(JSON.parse(<string>validationResponse?.body)).toEqual(
+            expect.objectContaining({ validationErrors: expect.objectContaining({ 'index-1': 'not a valid option' }) })
+          );
+        });
+      });
     });
   });
   describe('return valid:true', () => {
