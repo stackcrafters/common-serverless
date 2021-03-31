@@ -32,8 +32,8 @@ const setupSchemaObject = (required, func?, properties?, strict?) =>
   });
 const setupSchemaArray = (required, func?, properties?, minLength?, maxLength?, uniqueEntries?) =>
   setupSchema({ type: 'array', required, function: func, properties, minLength, maxLength, uniqueEntries });
-const setupSchemaString = (required, pattern?, func?, patternHelper?, options?) =>
-  setupSchema({ type: 'string', required, pattern, function: func, patternHelper, options });
+const setupSchemaString = (required, pattern?, func?, patternHelper?, options?, optionsHelper?) =>
+  setupSchema({ type: 'string', required, pattern, function: func, patternHelper, options, optionsHelper });
 const setupSchemaNumber = (required, pattern?, min?, max?, func?, options?) =>
   setupSchema({
     type: 'number',
@@ -398,19 +398,26 @@ describe('type validation for string', () => {
     describe('options', () => {
       beforeEach(() => {
         requestSchema = setupSchemaObject(true, false, {
-          a: setupSchemaString(true, '^[a-z]+$', undefined, '', [
-            {
-              label: 'x',
-              value: 'x'
-            }
-          ])
+          a: setupSchemaString(
+            true,
+            '^[a-z]+$',
+            undefined,
+            '',
+            [
+              {
+                label: 'x',
+                value: 'x'
+              }
+            ],
+            'only x'
+          )
         });
       });
       it('not a valid option', async () => {
         const { valid, validationResponse } = await validateRequest(requestSchema, { a: 'a' });
         expect(valid).toBe(false);
         expect(JSON.parse(<string>validationResponse?.body)).toEqual(
-          expect.objectContaining({ validationErrors: expect.objectContaining({ a: 'not a valid option' }) })
+          expect.objectContaining({ validationErrors: expect.objectContaining({ a: 'not a valid option (only x)' }) })
         );
       });
     });
