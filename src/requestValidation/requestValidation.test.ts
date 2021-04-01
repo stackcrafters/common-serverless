@@ -440,12 +440,17 @@ describe('type validation for string', () => {
       expect(valid).toBe(true);
     });
     describe('options', () => {
-      beforeEach(() => {
+      it('valid option', async () => {
         requestSchema = setupSchemaObject(true, false, {
           a: setupSchemaString(true, '^[a-z]+$', undefined, '', [{ label: 'x', value: 'x' }])
         });
+        const { valid } = await validateRequest(requestSchema, { a: 'x' });
+        expect(valid).toBe(true);
       });
-      it('valid option', async () => {
+      it('valid option when empty options defined', async () => {
+        requestSchema = setupSchemaObject(true, false, {
+          a: setupSchemaString(true, '^[a-z]+$', undefined, '', [])
+        });
         const { valid } = await validateRequest(requestSchema, { a: 'x' });
         expect(valid).toBe(true);
       });
@@ -541,13 +546,18 @@ describe('type validation for number', () => {
       expect(valid).toBe(true);
     });
     describe('options', () => {
-      beforeEach(() => {
+      it('valid option', async () => {
         requestSchema = setupSchemaObject(true, false, {
           a: setupSchemaNumber(true, false, undefined, undefined, undefined, [{ label: '1', value: '9' }])
         });
-      });
-      it('valid option', async () => {
         const { valid } = await validateRequest(requestSchema, { a: 9 });
+        expect(valid).toBe(true);
+      });
+      it('valid option when empty options defined', async () => {
+        requestSchema = setupSchemaObject(true, false, {
+          a: setupSchemaString(true, '^[a-z]+$', undefined, '', [])
+        });
+        const { valid } = await validateRequest(requestSchema, { a: 'x' });
         expect(valid).toBe(true);
       });
     });

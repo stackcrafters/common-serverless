@@ -163,7 +163,7 @@ const validateString = (propNames: string[], schemaNode: SchemaNode, bodyNode: a
   if (schemaNode.pattern && !new RegExp(schemaNode.pattern).test(schemaNodeString)) {
     return { [propNames.join('.')]: `does not match pattern${schemaNode.patternHelper ? ` (${schemaNode.patternHelper})` : ''}` };
   }
-  if (schemaNode.options && !schemaNode.options.map((n) => n.value).includes(<string>bodyNode)) {
+  if (schemaNode.options && schemaNode.options?.length > 0 && !schemaNode.options.map((n) => n.value).includes(<string>bodyNode)) {
     return { [propNames.join('.')]: `not a valid option${schemaNode.optionsHelper ? ` (${schemaNode.optionsHelper})` : ''}` };
   }
   /** Check if String matches function if function exists */
@@ -214,7 +214,7 @@ const validateNumber = (propNames: string[], schemaNode: SchemaNode, bodyNode: a
       return { [propNames.join('.')]: `must be less than ${schemaNode.max}` };
     }
   }
-  if (schemaNode.options && !schemaNode.options.map((n) => n.value).includes((<number>bodyNode).toString())) {
+  if (schemaNode.options && schemaNode.options?.length > 0 && !schemaNode.options.map((n) => n.value).includes((<number>bodyNode).toString())) {
     return { [propNames.join('.')]: 'not a valid option' };
   }
   /** Check if Number matches function if function exists */
