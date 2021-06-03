@@ -17,7 +17,7 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@stackcrafters/config-babel": "0.1.4"
+    "@stackcrafters/config-babel": "0.1.5"
   },
   "scripts": {
     "clean": "rimraf lib",
