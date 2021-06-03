@@ -23,6 +23,7 @@ export interface SchemaNode extends SchemaType {
 }
 
 export interface SchemaNodeArray extends SchemaType {
+  items?: SchemaNode;
   properties?: SchemaNode;
 }
 
@@ -100,7 +101,7 @@ const validateArray = (propNames: string[], schemaNode: SchemaNodeArray, bodyNod
 
     if (schemaNode.uniqueEntries) {
       const uniqueEntriesErrors = Object.entries(
-        bodyNode.reduce((acc: { [key: string]: number[] }, o: any, i: number) => {
+        bodyNode.reduce<Record<string, number[]>>((acc, o: any, i: number) => {
           let value: string;
           if (typeof schemaNode.uniqueEntries === 'string') {
             value = o[schemaNode.uniqueEntries];
@@ -130,11 +131,14 @@ const validateArray = (propNames: string[], schemaNode: SchemaNodeArray, bodyNod
         return uniqueEntriesErrors;
       }
     }
-    if (Array.isArray(bodyNode) && schemaNode.properties) {
+    if (Array.isArray(bodyNode) && (schemaNode.items || schemaNode.properties)) {
       return {
         /** Recursive call to each of the properties of the array */
         ...bodyNode.reduce((errors: Record<string, string>, arrayNode, arrayIndex) => {
-          return merge(errors, validateNode(<SchemaNodeArray>schemaNode.properties, arrayNode, propNames.concat([`index-${arrayIndex}`])));
+          return merge(
+            errors,
+            validateNode(<SchemaNodeArray>(schemaNode.items || schemaNode.properties), arrayNode, propNames.concat([`index-${arrayIndex}`]))
+          );
         }, {}),
 
         /** Call Function if exists */
@@ -214,7 +218,11 @@ const validateNumber = (propNames: string[], schemaNode: SchemaNode, bodyNode: a
       return { [propNames.join('.')]: `must be less than ${schemaNode.max}` };
     }
   }
-  if (schemaNode.options && schemaNode.options?.length > 0 && !schemaNode.options.map((n) => n.value).includes((<number>bodyNode).toString())) {
+  if (
+    schemaNode.options &&
+    schemaNode.options?.length > 0 &&
+    !schemaNode.options.map((n) => n.value).includes((<number>bodyNode).toString())
+  ) {
     return { [propNames.join('.')]: 'not a valid option' };
   }
   /** Check if Number matches function if function exists */

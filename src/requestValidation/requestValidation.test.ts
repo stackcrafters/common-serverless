@@ -1,26 +1,6 @@
 import validateRequest, { SchemaNode, SchemaNodeArray } from './requestValidation';
 
-const setupSchema = ({
-  type,
-  required,
-  function: func,
-  properties,
-  pattern,
-  patternHelper,
-  strict,
-  ...more
-}: SchemaNode | SchemaNodeArray) => {
-  return {
-    type: type,
-    ...(required && { required }),
-    ...(func && { function: func }),
-    ...(properties && { properties }),
-    ...(pattern && { pattern }),
-    ...(patternHelper && { patternHelper }),
-    ...(strict && { strict }),
-    ...more
-  };
-};
+const setupSchema = (props: SchemaNode | SchemaNodeArray) => props;
 
 const setupSchemaObject = (required, func?, properties?, strict?) =>
   setupSchema({
@@ -30,8 +10,8 @@ const setupSchemaObject = (required, func?, properties?, strict?) =>
     properties,
     strict
   });
-const setupSchemaArray = (required, func?, properties?, minLength?, maxLength?, uniqueEntries?) =>
-  setupSchema({ type: 'array', required, function: func, properties, minLength, maxLength, uniqueEntries });
+const setupSchemaArray = (required, func?, items?, minLength?, maxLength?, uniqueEntries?) =>
+  setupSchema({ type: 'array', required, function: func, items, minLength, maxLength, uniqueEntries });
 const setupSchemaString = (required, pattern?, func?, patternHelper?, options?, optionsHelper?) =>
   setupSchema({ type: 'string', required, pattern, function: func, patternHelper, options, optionsHelper });
 const setupSchemaNumber = (required, pattern?, min?, max?, func?, options?) =>
