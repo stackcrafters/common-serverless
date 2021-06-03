@@ -18,6 +18,8 @@ jobs:
           # Defaults to the user or organization that owns the workflow file
           scope: "@stackcrafters"
       - run: npm ci
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN  }}
       - run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN  }}
