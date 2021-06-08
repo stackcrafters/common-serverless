@@ -1,1 +1,1 @@
-export default { type: 'ignore' };
+export default { type: 'ignore' } as const;
