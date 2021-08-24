@@ -21,6 +21,7 @@ export const response = (body: any, statusCode = code.OK, additionalHeaders = {}
     body: JSON.stringify(body),
     headers: {
       'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'Content-Type, X-Amz-Date, Authorization, X-Api-Key, X-Amz-Security-Token, X-Amz-User-Agent',
       'Cache-Control': 'no-store, max-age=0',
       ...additionalHeaders
     }
@@ -33,6 +34,7 @@ export const messageResponse = (message: string, statusCode = code.FORBIDDEN): R
     body: JSON.stringify({ statusCode, message }),
     headers: {
       'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'Content-Type, X-Amz-Date, Authorization, X-Api-Key, X-Amz-Security-Token, X-Amz-User-Agent',
       'Cache-Control': 'no-store, max-age=0'
     }
   };
