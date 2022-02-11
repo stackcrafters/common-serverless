@@ -36,7 +36,7 @@ const validateObject = (propNames: string[], schemaNode: SchemaNode, bodyNode: a
   if (isRequired(schemaNode) && (bodyNode === null || bodyNode === undefined)) {
     return { [propNames.length > 0 ? propNames.join('.') : 'body']: 'is required' };
   }
-  if (typeof bodyNode !== 'undefined' && bodyNode !== null && bodyNode !== undefined && bodyNode.constructor !== Object) {
+  if (typeof bodyNode !== 'undefined' && !(bodyNode === null || bodyNode === undefined) && bodyNode.constructor !== Object) {
     return { [propNames.length > 0 ? propNames.join('.') : 'body']: 'must be of type object' };
   }
   if (bodyNode && bodyNode.constructor === Object) {
