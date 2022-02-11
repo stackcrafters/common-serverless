@@ -84,6 +84,23 @@ describe('type validation for object', () => {
     beforeEach(() => {
       requestSchema = setupSchemaObject(true, () => ({}), { a: setupSchemaObject(true) }, false);
     });
+    describe('when object - is optional', () => {
+      beforeEach(() => {
+        requestSchema = setupSchemaObject(false, () => ({}), { a: setupSchemaObject(false) }, false);
+      })
+      it('and was provided',  () => {
+        const { valid } = validateRequest(requestSchema, {});
+        expect(valid).toBe(true);
+      });
+      it('and not provided (null)',  () => {
+        const { valid } = validateRequest(requestSchema, null);
+        expect(valid).toBe(true);
+      });
+      it('and not provided (undefined)',  () => {
+        const { valid } = validateRequest(requestSchema, undefined);
+        expect(valid).toBe(true);
+      });
+    })
     it('object - has no errors', async () => {
       const { valid } = await validateRequest(requestSchema, { a: {} });
       expect(valid).toBe(true);
